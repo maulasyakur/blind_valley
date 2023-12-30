@@ -1,0 +1,6 @@
+B 0 0 0 0
+H B H B H
+B 0 0 0 0
+H B H B H
+B H B 0 0
+0 0 H B H
