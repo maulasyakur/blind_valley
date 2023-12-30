@@ -1,11 +1,12 @@
 from sys import argv
+from unittest import result
 
 restrictions = []
 directions = []
 grid = []
 max_row, max_col = 0, 0
 blocks = []
-posibilities = [("B","H"), ("H", "B"), ("N", "N")]
+posibilities = [("H","B"), ("B", "H"), ("N", "N")]
 
 def main():
     #check for valid input
@@ -27,21 +28,19 @@ def main():
         return 1
 
     #solve the game
-    solve(grid, blocks[0])
-    for row in grid:
-        print(row)
+    solved = solve(grid, blocks[0])
 
     #write out the result
-    # try:
-    #     with open(argv[2], "w") as foutput:
-    #         if grid is not None:
-    #             output = "\n".join(" ".join(map(str, row)) for row in result)
-    #         else:
-    #             output = "No solution!"
-    #         foutput.write(output)
-    # except IOError:
-    #     print("Invalid output file")
-    #     return 1
+    try:
+        with open(argv[2], "w") as foutput:
+            if solved == True:
+                output = "\n".join(" ".join(map(str, row)) for row in grid)
+            else:
+                output = "No solution!"
+            foutput.write(output)
+    except IOError:
+        print("Invalid output file")
+        return 1
 
 
 def make_list(input):
@@ -69,7 +68,6 @@ def make_list(input):
             if directions[i][j] == "U":
                 blocks.append([(i, j), (i+1, j)])
     
-
     return max_row, max_col
 
 def safe(val, row, col):
@@ -93,8 +91,6 @@ def safe(val, row, col):
         current_restricts_row, current_restricts_col = restrictions[3][col], restrictions[1][row]
     elif val == "H":
         current_restricts_row, current_restricts_col = restrictions[2][col], restrictions[0][row]
-
-    print(val, [row, col], [current_restricts_row, current_restricts_col], [max_row, max_col])
     
     # get the amount of the same val in row and col. if there's no restrictions, continue
     if current_restricts_row != -1:
@@ -102,7 +98,7 @@ def safe(val, row, col):
         for i in range(max_row):
             if grid[i][col] == val:
                 val_copy_count_row += 1
-        print(val_copy_count_row, current_restricts_row, val_copy_count_row > current_restricts_row)
+        # print(val_copy_count_row, current_restricts_row, val_copy_count_row > current_restricts_row)
         if val_copy_count_row > current_restricts_row:
             return False
     
@@ -111,7 +107,7 @@ def safe(val, row, col):
         for i in range(max_col):
             if grid[row][i] == val:
                 val_copy_count_col += 1
-        print(val_copy_count_col, current_restricts_col, val_copy_count_col > current_restricts_col)
+        # print(val_copy_count_col, current_restricts_col, val_copy_count_col > current_restricts_col)
         if val_copy_count_col > current_restricts_col:
             return False
 
@@ -122,9 +118,60 @@ def get_next_block(current_block):
         if current_block == val:
             if index < len(blocks) - 1:
                 return blocks[index + 1]
-    
     return None
 
+def restrics_fulfilled():
+    # check if a row or a col is filled
+    filled_row = []
+    for i in range(len(grid)):
+        filled_cell = 0
+        for j in range(len(grid[0])):
+            if type(grid[i][j]) == str and grid[i][j] in "BHN":
+                filled_cell += 1
+        if filled_cell == max_col:
+            filled_row.append(i)
+
+    filled_col = []
+    for i in range(len(grid[0])):
+        filled_cell = 0
+        for j in range(len(grid)):
+            if type(grid[j][i]) == str and grid[j][i] in "BHN":
+                filled_cell += 1
+        if filled_cell == max_row:
+            filled_col.append(i)
+    
+    # check if filled row and columns have fulfilled restrictions
+    for row in filled_row:
+        row_restrics_b = restrictions[1][row]
+        row_restrics_h = restrictions[0][row]
+        val_count_b = 0
+        val_count_h = 0
+        for i in range(len(grid[0])):
+            if grid[row][i] == "B":
+                val_count_b += 1
+            elif grid[row][i] == "H":
+                val_count_h += 1
+        if val_count_b != row_restrics_b and row_restrics_b != -1:
+            return False
+        if val_count_h != row_restrics_h and row_restrics_h != -1:
+            return False
+        
+    for col in filled_col:
+        col_restrics_b = restrictions[3][col]
+        col_restrics_h = restrictions[2][col]
+        val_count_b = 0
+        val_count_h = 0
+        for i in range(len(grid)):
+            if grid[i][col] == "B":
+                val_count_b += 1
+            elif grid[i][col] == "H":
+                val_count_h += 1
+        if val_count_b != col_restrics_b and col_restrics_b != -1:
+            return False
+        if val_count_h != col_restrics_h and col_restrics_h != -1:
+            return False
+
+    return True
 
 def solve(grid, current_block):
     # Base case: If we have reached or exceeded the end of the grid, return the current grid
@@ -136,16 +183,14 @@ def solve(grid, current_block):
         safe_1 = safe(val[0], current_block[0][0], current_block[0][1])
         safe_2 = safe(val[1], current_block[1][0], current_block[1][1])
 
-        print(val, current_block[0], current_block[1], safe_1, safe_2)
-        print()
-
         if safe_1 and safe_2:
             grid[current_block[0][0]][current_block[0][1]] = val[0]
             grid[current_block[1][0]][current_block[1][1]] = val[1]
 
-            for row in grid:
-                print(row)
-            print()
+            if not restrics_fulfilled():
+                grid[current_block[0][0]][current_block[0][1]] = 0
+                grid[current_block[1][0]][current_block[1][1]] = 0
+                continue
 
             next_block = get_next_block(current_block)
             if solve(grid, next_block):
